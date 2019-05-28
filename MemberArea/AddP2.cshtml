@@ -1,0 +1,134 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian") )
+    {} else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+
+    Layout = "~/_MemberLayout.cshtml";
+
+    // Initialize general page variables
+    var p2number = "";
+    var serialnumber = "";
+    var notes = "";
+    var location = "TV5 Reliance";
+    var status = "Available";
+    bool isSuccess = false;
+
+    //setup validation
+    Validation.RequireField("p2number", "You must specify a P2 number.");
+    Validation.RequireField("serialnumber", "You must specify a serial number.");
+
+    //if this is a POST request, validate and process data
+    if (IsPost && Request.Form["add"] != null)
+    {
+        AntiForgery.Validate();
+        p2number = Request.Form["P2Number"];
+        serialnumber = Request.Form["SerialNumber"];
+        notes = Request.Form["Notes"];
+
+        // If all information is valid, create a new account
+        if (Validation.IsValid())
+        {
+            // Insert a new beta into the database
+            var db = Database.Open("StarterSite");
+
+            // check if beta number and serial number already exists
+            var dupserial = db.QuerySingle("SELECT SerialNumber FROM P2 WHERE LOWER(SerialNumber) = LOWER(@0)", serialnumber);
+            var dupp2 = db.QuerySingle("SELECT P2Number FROM P2 WHERE LOWER(P2Number) = LOWER(@0)", p2number);
+            if (dupserial == null)
+            {
+                if (dupp2 == null)
+                {
+                    // insert beta into the P2 Table
+                    db.Execute("INSERT INTO P2 (P2Number,SerialNumber,Status,Location,Notes) VALUES (@0,@1,@2,@3,@4)", p2number, serialnumber, status, location, notes);
+                    isSuccess = true;
+                }
+                else
+                {
+                    // Beta tape with beta number already exists
+                    ModelState.AddFormError("P2 Number already exists");
+                }
+
+            }
+            else {
+                // Beta tape with serial number already exists
+                ModelState.AddFormError("Serial Number already exists");
+            }
+        }
+    }
+}
+
+<form method="post">
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Add P2 Drive</li>
+        </ul>
+    </div>
+
+    <div class="form-horizontal col-lg-8">
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="P2Number" @if (!ModelState.IsValidField("P2Number")) { <text> class="error-label" </text>      }>P2 Number</label>
+            </div>
+            <div class="col-md-3">
+                <input class="form-control" type="text" id="P2Number" name="P2Number" @Validation.For("P2Number") />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("P2Number")
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="SerialNumber" @if (!ModelState.IsValidField("SerialNumber")) { <text> class="error-label" </text>       }>Serial Number</label>
+            </div>
+            <div class="col-md-6">
+                <input class="form-control" type="text" id="SerialNumber" name="SerialNumber" @Validation.For("SerialNumber") />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("SerialNumber")
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Notes" @if (!ModelState.IsValidField("Notes")) { <text> class="error-label" </text>  }>Notes</label>
+            </div>
+            <div class="col-md-6">
+                <textarea class="form-control" id="Notes" name="Notes" rows="4" cols="20" @Validation.For("Notes")></textarea>
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Notes")
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-lg-10 col-lg-offset-5">
+                <a href="~/MemberArea/ManageP2.cshtml" class="btn btn-default">Cancel</a>
+                <input id="submit" type="submit" class="btn btn-primary" value="Submit" name="add" />
+            </div>
+        </div>
+        <br />
+        <div class="form-group">
+            <div class="col-md-3"></div>
+            <div class="col-md-9 text-danger">
+                @AntiForgery.GetHtml()
+                @* If at least one validation error exists, notify the user *@
+                @Html.ValidationSummary("Add Beta was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+                @if (isSuccess)
+                {
+                    <p class="text-success">
+                        Beta Tape has been succesfully added. <br /><br />
+                        Number: @p2number<br />
+                        Serial Number: @serialnumber
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+</form>

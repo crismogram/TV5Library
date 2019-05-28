@@ -1,0 +1,183 @@
+﻿@section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/Scripts/jquery.maskedinput.js"></script>
+    <script>
+        jQuery(function ($) {
+            $("#MobileNumber").mask("(999) 999-9999");
+        });
+    </script>
+}
+
+@{
+
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian"))
+    { }
+    else
+    {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+
+    Layout = "~/_MemberLayout.cshtml";
+
+    // Initialize general page variables
+    var Email = "";
+    var EmployeeNumber = "";
+    var FirstName = "";
+
+    bool isSuccess = false;
+    WebImage photo = null;
+    var newFileName = "";
+    var imagePath = "";
+    var hidden = "";
+
+    //getting the Beta ID from URL
+    var userID = Request.QueryString["id"];
+
+    if (userID.IsEmpty())
+    {
+        Response.Redirect("~/MemberArea/ManageUsers");
+    }
+
+    if (!IsPost)
+    {
+        if (!Request.QueryString["id"].IsEmpty() && Request.QueryString["id"].IsInt())
+        {
+            userID = Request.QueryString["id"];
+
+
+            var db = Database.Open("StarterSite");
+            var dbCommand = "SELECT * FROM UserProfile Where UserId = @0";
+            var row = db.QuerySingle(dbCommand, userID);
+            Email = row.Email;
+            EmployeeNumber = row.EmployeeNumber;
+            FirstName = row.FirstName + " " + row.MiddleName + " " + row.LastName;
+            imagePath = row.Position;
+
+        }
+    }
+
+
+
+    //if this is a POST request, validate and process data
+    if (IsPost && Request.Form["update"] != null)
+    {
+        photo = WebImage.GetImageFromRequest();
+        if (photo != null)
+        {
+            newFileName = Guid.NewGuid().ToString() + "_" +
+                Path.GetFileName(photo.FileName);
+            imagePath = @"\Images\Profile\" + newFileName;
+
+            var db = Database.Open("StarterSite");
+            db.Execute("UPDATE UserProfile SET Position=@0 WHERE UserId=@1", imagePath, userID);
+            photo.Save(@"~\" + imagePath);
+            isSuccess = true;
+
+            var dbCommand = "SELECT * FROM UserProfile Where UserId = @0";
+            var row = db.QuerySingle(dbCommand, userID);
+            Email = row.Email;
+            EmployeeNumber = row.EmployeeNumber;
+            FirstName = row.FirstName + " " + row.MiddleName + " " + row.LastName;
+            imagePath = row.Position;
+
+            hidden = "hidden";
+
+
+        }
+    }
+}
+
+
+<form method="post" enctype="multipart/form-data">
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Update P2 Drive</li>
+        </ul>
+    </div>
+
+    <div class="form-horizontal col-lg-8">
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="EmployeeNumber" @if (!ModelState.IsValidField("EmployeeNumber")) { <text> class="error-label" </text>        }>Employee Number</label>
+            </div>
+            <div class="col-md-3">
+                <input class="form-control" type="text" id="EmployeeNumber" name="EmployeeNumber" @Validation.For("EmployeeNumber") value="@EmployeeNumber" readonly />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Email" @if (!ModelState.IsValidField("Email")) { <text> class="error-label" </text>         }>Email</label>
+            </div>
+            <div class="col-md-6">
+                <input class="form-control" type="text" id="Email" name="Email" @Validation.For("Email") value="@Email" readonly/>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="FirstName" @if (!ModelState.IsValidField("FirstName")) { <text> class="error-label" </text>         }>First Name</label>
+            </div>
+            <div class="col-md-5">
+                <input class="form-control" type="text" id="FirstName" name="FirstName" @Validation.For("FirstName") value="@FirstName" readonly />
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label>Upload Image</label>
+            </div>
+            <div class="col-md-8">
+                <input class="form-control" type="file" name="Image" value="" /><br /><i>Use jpeg or png files only. Recommended size is 150x150 pixels</i>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label>Profile Photo</label>
+            </div>
+            <div class="col-md-8">
+                @if (imagePath != "")
+                {
+                    <div class="result limitheight150">
+                        <div class="well-lg">
+                            <img width="100" src="@imagePath" alt="image" />
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+
+
+
+
+
+        <div class="form-group @hidden">
+            <div class="col-lg-10 col-lg-offset-5">
+                <a href="~/MemberArea/ManageUsers.cshtml" class="btn btn-default">Cancel</a>
+                <input id="submit" type="submit" class="btn btn-primary" value="Update" name="update" />
+            </div>
+        </div>
+        <br />
+        <div class="form-group">
+            <div class="col-md-3"></div>
+            <div class="col-md-9 text-danger">
+                @AntiForgery.GetHtml()
+                @* If at least one validation error exists, notify the user *@
+                @Html.ValidationSummary("Updating User Info was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+                @if (isSuccess)
+                {
+                    <p class="text-success">
+                        Employee Info has been succesfully Updated. <br />
+                        Go back to <a href="~/MemberArea/ManageUsers.cshtml">Manage Users</a> or the <a href="~/MemberArea/Dashboard.cshtml">Dashboard</a>
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+</form>

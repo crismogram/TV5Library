@@ -1,0 +1,11 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian"))
+    {
+        
+    } else {
+        Response.SetStatus(HttpStatusCode.Forbidden);
+        
+    }
+}
+

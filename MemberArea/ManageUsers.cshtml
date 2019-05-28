@@ -1,0 +1,81 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian"))
+    { }
+    else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+
+    Layout = "~/_MemberLayout.cshtml";
+
+    var db = Database.Open("StarterSite");
+    IEnumerable<dynamic> selecteddata = Enumerable.Empty<dynamic>();
+
+    var selectQueryString = "SELECT * FROM UserProfile";
+    var searchUser = "";
+
+
+    if (!Request.QueryString["searchUser"].IsEmpty())
+    {
+        selectQueryString = "SELECT * FROM UserProfile WHERE LastName LIKE @0";
+        //searchUser = Request.QueryString["searchUser"];
+        searchUser = "%" + Request.QueryString["searchUser"] + "%";
+        selecteddata = db.Query(selectQueryString, searchUser);
+    }
+    else
+    {
+        selecteddata = db.Query(selectQueryString);
+    }
+
+    var grid = new WebGrid(source: selecteddata, rowsPerPage: 5);
+
+
+}
+
+<div class="col-lg-12">
+    <br />
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Manage Users</li>
+        </ul>
+    </div>
+    <br />
+</div>
+
+
+<div class="col-lg-12">
+    <div class="col-lg-12">
+        <div class="form-group panel panel-default">
+            <form class="panel-body" method="get">
+                <div class="col-lg-1">
+                    <label>Last Name</label>
+                </div>
+                <div class="col-lg-2">
+                    <input type="text" name="searchUser" value="@Request.QueryString["searchUser"]" class="form-control" />
+                </div>
+                <div class="col-lg-3">
+                    <input id="submitbutton" type="submit" value="Search" class="btn btn-default" />
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+<div>
+    @grid.GetHtml(
+                    tableStyle: "table table-bordered table-hover",
+                    columns: grid.Columns(
+                        grid.Column(format: @<a href="~/MemberArea/UpdateUser.cshtml/?id=@item.UserID">Edit</a>),
+                        grid.Column("EmployeeNumber", header: "Employee Number"),
+                        grid.Column("FirstName", header: "First Name"),
+                        grid.Column("MiddleName", header: "Middle Name"),
+                        grid.Column("LastName", header: "Last Name"),
+                        grid.Column("MobileNumber", header: "Mobile Number"),
+                        grid.Column("Position", header: "Image", format: @<img class="img-rounded" width="100" src="@item.Position" />),
+                        grid.Column(format: @<a href="~/MemberArea/UploadPhoto.cshtml/?id=@item.UserID">Upload Photo</a>)
+                        )
+               )
+</div>
+<br /><br />

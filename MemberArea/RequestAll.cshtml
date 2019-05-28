@@ -1,0 +1,84 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian") )
+    {} else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+    Layout = "~/_MemberLayout.cshtml";
+
+    var db = Database.Open("StarterSite");
+    IEnumerable<dynamic> selecteddata1 = Enumerable.Empty<dynamic>();
+    IEnumerable<dynamic> selecteddata2 = Enumerable.Empty<dynamic>();
+    var datenow = DateTime.Now.ToString("MM/dd/yyyy");
+    var dateyear = DateTime.Now.AddYears(1).ToString("MM/dd/yyyy");
+
+    var selectQueryStringP2 = "SELECT * FROM P2Request WHERE DateNeeded between @0 and @1 ORDER BY DateNeeded";
+    selecteddata1 = db.Query(selectQueryStringP2, datenow, dateyear);
+    var grid1 = new WebGrid(source: selecteddata1, rowsPerPage: 99);
+
+    var selectQueryStringBeta = "SELECT * FROM BetaRequest WHERE DateNeeded between @0 and @1 ORDER BY DateNeeded";
+    selecteddata2 = db.Query(selectQueryStringBeta, datenow, dateyear);
+    var grid2 = new WebGrid(source: selecteddata2, rowsPerPage: 99);
+
+}
+
+<div class="col-lg-12">
+    <br />
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">All Request</li>
+        </ul>
+    </div>
+    <br />
+</div>
+
+
+<div class="col-lg-12">
+    <div class="col-lg-12">
+        <div class="form-group panel panel-default">
+            <div class="panel-heading">
+                P2
+            </div>
+            <div class="panel-body">
+                @grid1.GetHtml(
+                    tableStyle: "table table-bordered table-hover",
+                    columns: grid1.Columns(
+                        grid1.Column("DateNeeded", header: "Date Needed", format: item => ((item.DateNeeded == null) ? "" : item.DateNeeded.ToString("MM/dd/yyyy"))),
+                        grid1.Column("Quantity"),
+                        grid1.Column("Purpose"),
+			            grid1.Column("MemberID")
+                        )
+               )
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-lg-12">
+    <div class="col-lg-12">
+        <div class="form-group panel panel-default">
+            <div class="panel-heading">
+                Beta
+            </div>
+            <div class="panel-body">
+                @grid2.GetHtml(
+                    tableStyle: "table table-bordered table-hover",
+                    columns: grid2.Columns(
+                        grid2.Column("DateNeeded", header: "Date Needed", format: item => ((item.DateNeeded == null) ? "" : item.DateNeeded.ToString("MM/dd/yyyy"))),
+                        grid2.Column("Subject"),
+                        grid2.Column("Purpose"),
+                        grid2.Column("BetaNumbers")
+                        )
+               )
+            </div>
+        </div>
+    </div>
+</div>
+<div class="col-lg-12">
+    <br />
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb"></ul>
+    </div>
+    <br />
+</div>
+<br /><br />

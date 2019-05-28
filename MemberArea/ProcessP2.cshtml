@@ -1,0 +1,167 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian") )
+    {} else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+    Layout = "~/_MemberLayout.cshtml";
+
+    // getting the P2 ID from URL
+    var p2id = Request.QueryString["id"];
+    if (p2id.IsEmpty())
+    {
+        Response.Redirect("~/MemberArea/TransactP2");
+    }
+
+    // Initialize general page variables
+    var db = Database.Open("StarterSite");
+    var dbCommand = "SELECT * FROM P2 Where ID = @0";
+    var row = db.QuerySingle(dbCommand, p2id);
+    var p2number = row.P2Number;
+    var serialnumber = row.SerialNumber;
+    var status = row.Status;
+    var location = row.Location;
+    var newlocation = "";
+    var notes = row.Notes;
+    var action = "";
+    var details = "";
+    bool isSuccess = false;
+    string hiddenclass = "";
+    var date = DateTime.UtcNow.AddHours(8);
+
+    if (location == "TV5 Reliance"){
+        action = "borrow"; }
+    else {
+        action = "return"; }
+
+    var member = "";
+    var dbmember = "SELECT UserProfile.UserId,UserProfile.FirstName, UserProfile.LastName,webpages_UsersInRoles.RoleId FROM webpages_UsersInRoles INNER JOIN UserProfile ON webpages_UsersInRoles.UserId = UserProfile.UserId WHERE webpages_UsersInRoles.RoleId = 8 ORDER BY UserProfile.LastName";
+
+    string act = "";
+
+    //if this is a POST request, validate and process data
+    if (IsPost && Request.Form["update"] != null)
+    {
+        Validation.RequireField("details", "You must specify details for this transaction.");
+        member = Request.Form["selectUserName"];
+        details = Request.Form["Details"];
+
+        if(action == "borrow"){
+            Validation.RequireField("selectUserName", "You must specify a member for issuance of the P2.");
+            if (Validation.IsValid()){
+                act = "In Use";
+                db.Execute("INSERT INTO P2Transact (TDate,TAction,ItemID,LibrarianID,MemberName,Details) VALUES (@0,@1,@2,@3,@4,@5)", date, action, p2id, WebSecurity.CurrentUserId, member,details);
+                db.Execute("UPDATE P2 SET Status=@0, Location=@1 WHERE ID = @2", act, member,p2id);
+                isSuccess = true;
+                hiddenclass = "hidden";
+            }
+        }
+        if(action == "return"){
+            act = "Available";
+            newlocation = "TV5 Reliance";
+            db.Execute("INSERT INTO P2Transact (TDate,TAction,ItemID,LibrarianID,MemberName,Details) VALUES (@0,@1,@2,@3,@4,@5)", date, action, p2id, WebSecurity.CurrentUserId, row.Location,details);
+            db.Execute("UPDATE P2 SET Status=@0, Location=@1 WHERE ID = @2", act, newlocation,p2id);
+            isSuccess = true;
+            hiddenclass = "hidden";
+        }
+
+    }
+}
+
+<form method="post">
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Transact P2 Drive</li>
+        </ul>
+    </div>
+
+    <div class="form-horizontal col-lg-8">
+        <div class="form-group ">
+            <div class="col-md-4 control-label">
+                <label>Transaction Details</label>
+            </div>
+            <div class="col-md-6">
+                <textarea class="form-control" rows="7" cols="20" readonly>P2 Number: @p2number
+Serial Number: @serialnumber    
+Status: @status
+Location: @location
+Notes: @notes
+Process: @action
+                </textarea>
+            </div>
+        </div>
+        @if(action == "borrow"){
+        <div class="form-group @hiddenclass">
+            <div class="col-md-4 control-label">
+                <label for="Member" @if (!ModelState.IsValidField("Member")) { <text> class="error-label" </text>   }>Issue To Member: </label>
+            </div>
+            <div class="col-lg-6">
+                <select name="selectUserName" id="selectUserName" class="form-control">
+                    <option id="" value=""></option>
+                    @foreach (var make in db.Query(dbmember))
+                    {
+                        <option id="" value="@make.LastName, @make.FirstName">@make.LastName, @make.FirstName</option>
+                    }
+                </select>
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("selectUserName")
+                </div>
+            </div>
+        </div>
+        }
+        @if(action == "return"){
+        <div class="form-group @hiddenclass">
+            <div class="col-md-4 control-label">
+                <label>Process: </label>
+            </div>
+            <div class="col-lg-6">
+                <input class="form-control" type="text" value="Return to TV5 Reliance" readonly />
+            </div>
+        </div>
+        }
+        <div class="form-group @hiddenclass">
+            <div class="col-md-4 control-label">
+                <label for="Details" @if (!ModelState.IsValidField("Details")) { <text> class="error-label" </text>   }>Transaction Details</label>
+            </div>
+            <div class="col-md-6">
+                <textarea class="form-control" id="Details" name="Details" rows="4" cols="20" @Validation.For("Details")>@details</textarea>
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Details")
+                </div>
+            </div>
+        </div>
+        <div class="form-group @hiddenclass">
+            <div class="col-lg-10 col-lg-offset-5">
+                <a href="~/MemberArea/TransactP2.cshtml" class="btn btn-default">Cancel</a>
+                <input id="submit" type="submit" class="btn btn-primary" value="Process Transaction" name="update" />
+            </div>
+        </div>
+        <br />
+        
+        <div class="form-group">
+            <div class="col-md-3"></div>
+            <div class="col-md-9 text-danger">
+                @AntiForgery.GetHtml()
+                @* If at least one validation error exists, notify the user *@
+                @Html.ValidationSummary("Issuance/Return of P2 was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+                @if (isSuccess && action == "borrow")
+                {
+                    <p class="text-success">
+                        P2 Number: @p2number was borrowed by @member and logged officially. <br /><br />
+                        You can <a href="~/MemberArea/TransactP2.cshtml">process another P2</a> or <a href="~/MemberArea/Dashboard.cshtml">go back to Dashboard</a>
+                    </p>
+                }
+                @if (isSuccess && action == "return")
+                {
+                    <p class="text-success">
+                        P2 Number: @p2number was returned by @row.Location and logged officially. <br /><br />
+                        You can <a href="~/MemberArea/TransactP2.cshtml">process another P2</a> or <a href="~/MemberArea/Dashboard.cshtml">go back to Dashboard</a>
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+</form>

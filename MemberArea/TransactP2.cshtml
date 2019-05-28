@@ -1,0 +1,76 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian") )
+    {} else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+    Layout = "~/_MemberLayout.cshtml";
+
+    var db = Database.Open("StarterSite");
+    IEnumerable<dynamic> selecteddata = Enumerable.Empty<dynamic>();
+
+    var selectQueryString = "SELECT * FROM P2 WHERE Status = 'In Use' OR Status = 'Available'";
+    var searchP2 = "";
+
+
+    if (!Request.QueryString["searchP2"].IsEmpty())
+    {
+        selectQueryString = "SELECT * FROM P2 WHERE P2Number = @0 AND (Status = 'In Use' OR Status = 'Available')";
+        searchP2 = Request.QueryString["searchP2"];
+        selecteddata = db.Query(selectQueryString, searchP2);
+    }
+    else
+    {
+        selecteddata = db.Query(selectQueryString);
+    }
+
+    var grid = new WebGrid(source: selecteddata, rowsPerPage: 10);
+
+
+}
+
+<div class="col-lg-12">
+    <br />
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Transact P2</li>
+        </ul>
+    </div>
+    <br />
+</div>
+
+
+<div class="col-lg-12">
+    <div class="col-lg-12">
+        <div class="form-group panel panel-default">
+            <form class="panel-body" method="get">
+                <div class="col-lg-1">
+                    <label>P2 Number</label>
+                </div>
+                <div class="col-lg-2">
+                    <input type="text" name="searchP2" value="@Request.QueryString["searchP2"]" class="form-control" />
+                </div>
+                <div class="col-lg-3">
+                    <input id="submitbutton" type="submit" value="Search" class="btn btn-default" />
+                </div>
+            </form>
+        </div>
+
+    </div>
+
+</div>
+<div>
+    @grid.GetHtml(
+                    tableStyle: "table table-bordered table-hover",
+                    columns: grid.Columns(
+                        grid.Column(format: @<a href="~/MemberArea/ProcessP2.cshtml/?id=@item.ID">Transact</a>),
+                        grid.Column("P2Number", header: "P2 Number"),
+                        grid.Column("SerialNumber", header: "Serial Number"),
+                        grid.Column("Status"),
+                        grid.Column("Location"),
+                        grid.Column("Notes")
+                        )
+               )
+</div>
+<br /><br />

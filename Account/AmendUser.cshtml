@@ -1,0 +1,177 @@
+﻿@* Remove this section if you are using bundling *@
+@section Scripts {
+    <script src="~/Scripts/jquery.validate.min.js"></script>
+    <script src="~/Scripts/jquery.validate.unobtrusive.min.js"></script>
+    <script src="~/Scripts/jquery.maskedinput.js"></script>
+    <script>
+        jQuery(function ($) {
+            $("#mobilenumber").mask("(999) 999-9999");
+        });
+
+    </script>
+}
+
+@{
+    WebSecurity.RequireAuthenticatedUser();
+    Layout = "~/_MemberLayout.cshtml";
+
+    // Initialize general page variables
+    var mobilenumber = "";
+    var email = "";
+    var message = "";
+
+    // getting the ID from the user
+
+
+    if(!IsPost){
+        var userID = WebSecurity.CurrentUserId;
+        var db = Database.Open("StarterSite");
+        var dbCommand = "Select * FROM UserProfile WHERE UserId = @0";
+        var row = db.QuerySingle(dbCommand,userID);
+        mobilenumber = row.MobileNumber;
+        email = row.Email;
+    }
+
+    // Setup validation
+    Validation.RequireField("email", "You must specify an email address.");
+    Validation.RequireField("mobilenumber", "You must specify mobile number.");
+
+    // If this is a POST request, validate and process data
+    if (IsPost)
+    {
+        AntiForgery.Validate();
+        email = Request.Form["email"];
+        mobilenumber = Request.Form["mobilenumber"];
+
+        // If all information is valid, create a new account
+        if (Validation.IsValid())
+        {
+            var userID = WebSecurity.CurrentUserId;
+            var db = Database.Open("StarterSite");
+            var dbCommand = "Select * FROM UserProfile WHERE UserId = @0";
+            var row = db.QuerySingle(dbCommand,userID);
+            string dbemail = row.Email;
+            string dbmobile = row.MobileNumber;
+
+            if(!(dbemail == email)){
+
+                if(!(dbmobile == mobilenumber))
+                {
+                    var dupemail = db.QuerySingle("SELECT Email FROM UserProfile WHERE LOWER(Email) = LOWER(@0)", email);
+                    if (dupemail == null)
+                    {
+                        // Insert email into the profile table
+                        db.Execute("UPDATE UserProfile SET Email=@0, MobileNumber=@1 WHERE UserId = @2", email, mobilenumber, WebSecurity.CurrentUserId);
+                        message = "You have successfully changed your contact details.<br /><br />You need to relog in as you have been logged out.";
+                        Response.Redirect("~/Messages.cshtml?message=" + message);
+                    }
+                    else
+                    {
+                        // Email address already exists
+                        ModelState.AddFormError("Email address already exists.");
+                    }
+
+                } else if(dbmobile == mobilenumber)
+                {
+                    var dupemail = db.QuerySingle("SELECT Email FROM UserProfile WHERE LOWER(Email) = LOWER(@0)", email);
+                    if (dupemail == null)
+                    {
+                        // Insert email into the profile table
+                        db.Execute("UPDATE UserProfile SET Email=@0 WHERE UserId = @1", email, WebSecurity.CurrentUserId);
+                        message = "You have successfully changed your email address.<br /><br />You need to relog in as you have been logged out.";
+                        Response.Redirect("~/Messages.cshtml?message=" + message);
+                    }
+                    else
+                    {
+                        // Email address already exists
+                        ModelState.AddFormError("Email address already exists.");
+                    }
+                }
+            } else if ((dbemail == email) && !(dbmobile == mobilenumber))
+            {
+                // Update Mobile
+                db.Execute("UPDATE UserProfile SET MobileNumber=@0 WHERE UserId = @1", mobilenumber, WebSecurity.CurrentUserId);
+                message = "You have successfully changed your mobile number.<br /><br />You need to relog in as you have been logged out.";
+                Response.Redirect("~/Messages.cshtml?message=" + message);
+            }
+
+
+            else {
+                ModelState.AddFormError("Your email address is still the same.");
+            }
+
+
+
+
+        }
+        else
+        {
+            // User already exists
+            ModelState.AddFormError("");
+        }
+
+    }
+}
+
+
+
+<br />
+<form method="post">
+    <div class="row">
+        <div class="col-lg-3"></div>
+        <div class="col-lg-5">
+            <div class="form-horizontal">
+                <fieldset>
+                    <legend class="text-center">Amend User Profile</legend>
+
+                    <div class="form-group">
+                        <div class="col-md-4 control-label">
+                            <label for="email" @if (!ModelState.IsValidField("email")) { <text> class="error-label" </text>    }>Email</label>
+                        </div>
+                        <div class="col-md-8">
+                            <input class="form-control" type="text" id="email" name="email" @Validation.For("email") value="@email"/>
+                            <div class="text-danger">
+                                @* Write any user name validation errors to the page *@
+                                @Html.ValidationMessage("email")
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <div class="col-md-4 control-label">
+                            <label for="mobilenumber" @if (!ModelState.IsValidField("mobilenumber")) { <text> class="error-label" </text>     }>Mobile Number</label>
+                        </div>
+                        <div class="col-md-6">
+                            <input class="form-control" type="text" id="mobilenumber" name="mobilenumber" @Validation.For("mobilenumber") value="@mobilenumber" />
+                            <div class="text-danger">
+                                @* Write any user name validation errors to the page *@
+                                @Html.ValidationMessage("mobilenumber")
+                            </div>
+
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <div class="col-md-4 control-label"></div>
+                        <div class="col-md-8">
+                            <a href="~/MemberArea/Dashboard.cshtml" class="btn btn-default">Return to Dashboard</a>
+                            <input id="submitbutton" type="submit" class="btn btn-primary" />
+                        </div>
+                    </div>
+
+
+                    <br />
+                    <div class="form-group">
+                        <div class="col-md-4"></div>
+                        <div class="col-md-8 text-danger">
+                            @AntiForgery.GetHtml()
+                            @* If at least one validation error exists, notify the user *@
+                            @Html.ValidationSummary("Amending User Profile was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+                        </div>
+                    </div>
+
+                </fieldset>
+            </div>
+        </div>
+    </div>
+
+</form>

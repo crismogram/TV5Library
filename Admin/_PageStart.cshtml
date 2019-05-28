@@ -1,0 +1,8 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (!Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin"))
+    {
+        Response.SetStatus(HttpStatusCode.Forbidden);
+    }
+}
+

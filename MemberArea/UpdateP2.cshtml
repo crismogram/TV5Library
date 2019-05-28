@@ -1,0 +1,183 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian") )
+    {} else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+    Layout = "~/_MemberLayout.cshtml";
+
+    // Initialize general page variables
+    var p2number = "";
+    var serialnumber = "";
+    var status = "";
+    var location = "";
+    var notes = "";
+    bool isSuccess = false;
+    var available = "";
+    var defective = "";
+    var lost = "";
+    var onhold = "";
+
+
+
+    // getting the Beta ID from URL
+    var p2id = Request.QueryString["id"];
+
+    if (p2id.IsEmpty())
+    {
+        Response.Redirect("~/MemberArea/ManageP2");
+    }
+
+    if (!IsPost)
+    {
+        if (!Request.QueryString["id"].IsEmpty() && Request.QueryString["id"].IsInt())
+        {
+            p2id = Request.QueryString["id"];
+            var db = Database.Open("StarterSite");
+            var dbCommand = "SELECT * FROM P2 Where ID = @0";
+            var row = db.QuerySingle(dbCommand, p2id);
+            p2number = row.P2Number;
+            serialnumber = row.SerialNumber;
+            status = row.Status;
+            location = row.Location;
+            notes = row.Notes;
+            if (status == "Available") { available = "selected"; }
+            if (status == "Defective") { defective = "selected"; }
+            if (status == "Lost") { lost = "selected"; }
+            if (status == "OnHold") { onhold = "selected"; }
+        }
+    }
+
+    //if this is a POST request, validate and process data
+    if (IsPost && Request.Form["update"] != null)
+    {
+        //setup validation
+        Validation.RequireField("p2number", "You must specify a p2 number.");
+        Validation.RequireField("serialnumber", "You must specify a serial number.");
+
+        p2number = Request.Form["P2Number"];
+        serialnumber = Request.Form["SerialNumber"];
+        notes = Request.Form["Notes"];
+        location = Request.Form["Location"];
+        status = Request.Form["Status"];
+
+        // If all information is valid, create a new account
+        if (Validation.IsValid())
+        {
+            // Insert a new beta into the database
+            var db = Database.Open("StarterSite");
+
+            // insert beta into the Beta Table
+            db.Execute("UPDATE P2 SET P2Number=@0, SerialNumber=@1, Location=@2, Status=@3, Notes=@4 WHERE ID=@5", p2number, serialnumber, location, status, notes, p2id);
+            isSuccess = true;
+            if (status == "Available") { available = "selected"; }
+            if (status == "Defective") { defective = "selected"; }
+            if (status == "Lost") { lost = "selected"; }
+            if (status == "OnHold") { onhold = "selected"; }
+        }
+    }
+}
+
+<form method="post">
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Update P2 Drive</li>
+        </ul>
+    </div>
+
+    <div class="form-horizontal col-lg-8">
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="P2Number" @if (!ModelState.IsValidField("P2Number")) { <text> class="error-label" </text>      }>P2 Number</label>
+            </div>
+            <div class="col-md-3">
+                <input class="form-control" type="text" id="P2Number" name="P2Number" @Validation.For("P2Number") value="@p2number" />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("P2Number")
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="SerialNumber" @if (!ModelState.IsValidField("SerialNumber")) { <text> class="error-label" </text>       }>Serial Number</label>
+            </div>
+            <div class="col-md-6">
+                <input class="form-control" type="text" id="SerialNumber" name="SerialNumber" @Validation.For("SerialNumber") value="@serialnumber" />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("SerialNumber")
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Location" @if (!ModelState.IsValidField("Location")) { <text> class="error-label" </text>        }>Location</label>
+            </div>
+            <div class="col-md-6">
+                <input class="form-control" type="text" id="Location" name="Location" @Validation.For("Location") value="@location" readonly />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Location")
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Location" @if (!ModelState.IsValidField("Status")) { <text> class="error-label" </text>         }>Status</label>
+            </div>
+            <div class="col-md-3">
+                <select class="form-control" id="Status" name="Status" @Validation.For("Status")>
+                    <option @available value="Available">Available</option>
+                    <option @defective value="Defective">Defective</option>
+                    <option @lost value="Lost">Lost</option>
+                    <option @onhold value="OnHold">OnHold</option>
+                </select>
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Status")
+                </div>
+            </div>
+        </div>
+
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Notes" @if (!ModelState.IsValidField("Notes")) { <text> class="error-label" </text>  }>Notes</label>
+            </div>
+            <div class="col-md-6">
+                <textarea class="form-control" id="Notes" name="Notes" rows="4" cols="20" @Validation.For("Notes")>@notes</textarea>
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Notes")
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-lg-10 col-lg-offset-5">
+                <a href="~/MemberArea/ManageP2.cshtml" class="btn btn-default">Cancel</a>
+                <input id="submit" type="submit" class="btn btn-primary" value="Update" name="update" />
+            </div>
+        </div>
+        <br />
+        <div class="form-group">
+            <div class="col-md-3"></div>
+            <div class="col-md-9 text-danger">
+                @AntiForgery.GetHtml()
+                @* If at least one validation error exists, notify the user *@
+                @Html.ValidationSummary("Updating P2 was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+                @if (isSuccess)
+                {
+                    <p class="text-success">
+                        P2 Drive has been succesfully Updated. <br />
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+</form>

@@ -1,0 +1,101 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian") )
+    {} else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+    Layout = "~/_MemberLayout.cshtml";
+
+    var db = Database.Open("StarterSite");
+    IEnumerable<dynamic> selecteddata = Enumerable.Empty<dynamic>();
+
+    var selectQueryString = "SELECT * FROM Beta WHERE Status = 'In Use' OR Status = 'Available'";
+    var searchterm = "";
+    var searchsubj = "";
+    var searchbeta = "";
+
+
+    if (!Request.QueryString["searchBeta"].IsEmpty() && Request.QueryString["searchSubject"].IsEmpty())
+    {
+        selectQueryString = "SELECT * FROM Beta WHERE BetaNumber = @0 AND (Status = 'In Use' OR Status = 'Available')";
+        searchterm = Request.QueryString["searchBeta"];
+        selecteddata = db.Query(selectQueryString, searchterm);
+    }
+    else if (!Request.QueryString["searchSubject"].IsEmpty() && Request.QueryString["searchBeta"].IsEmpty())
+    {
+        selectQueryString = "SELECT * FROM Beta WHERE Subject LIKE @0 AND (Status = 'In Use' OR Status = 'Available')";
+        searchterm = "%" + Request.QueryString["searchSubject"] + "%";
+        selecteddata = db.Query(selectQueryString, searchterm);
+    }
+    else if (!Request.QueryString["searchSubject"].IsEmpty() && !Request.QueryString["searchBeta"].IsEmpty())
+    {
+        selectQueryString = "SELECT * FROM Beta WHERE BetaNumber = @0 AND Subject LIKE @1 AND (Status = 'In Use' OR Status = 'Available')";
+        searchbeta = Request.QueryString["searchBeta"];
+        searchsubj = "%" + Request.QueryString["searchSubject"] + "%";
+        selecteddata = db.Query(selectQueryString, searchbeta, searchsubj);
+    }
+    else
+    {
+        selecteddata = db.Query(selectQueryString);
+    }
+    var grid = new WebGrid(source: selecteddata, rowsPerPage: 10);
+
+
+}
+
+<div class="col-lg-12">
+    <br />
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Transact Beta</li>
+        </ul>
+    </div>
+    <br />
+</div>
+
+
+<div class="col-lg-12">
+    <div class="col-lg-12">
+        <div class="form-group panel panel-default">
+            <form class="panel-body" method="get">
+                <div class="col-lg-1">
+                    <label>Beta Number</label>
+                </div>
+                <div class="col-lg-2">
+                    <input type="text" name="searchBeta" value="@Request.QueryString["searchBeta"]" class="form-control" />
+                </div>
+                <div class="col-lg-1">
+                    <label>Subject</label>
+                </div>
+                <div class="col-lg-3">
+                    <input type="text" name="searchSubject" value="@Request.QueryString["searchSubject"]" class="form-control" />
+                </div>
+                <div class="col-lg-3">
+                    <input id="submitbutton" type="submit" value="Search" class="btn btn-default" />
+                </div>
+
+
+
+
+            </form>
+        </div>
+
+    </div>
+
+</div>
+<div>
+    @grid.GetHtml(
+                    tableStyle: "table table-bordered table-hover",
+                    columns: grid.Columns(
+                        grid.Column(format: @<a href="~/MemberArea/ProcessBeta.cshtml/?betaid=@item.ID">Transact</a>),
+                        grid.Column("BetaNumber", header: "Beta Number"),
+                        grid.Column("SerialNumber", header: "Serial Number"),
+                        grid.Column("Subject"),
+                        grid.Column("Location"),
+                        grid.Column("Status"),
+                        grid.Column("Details")
+                        )
+               )
+</div>
+<br /><br />

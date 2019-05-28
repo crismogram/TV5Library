@@ -1,0 +1,184 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+
+    Layout = "~/_MemberLayout.cshtml";
+    Page.Title = "Dashboard";
+
+    var db = Database.Open("StarterSite");
+    IEnumerable<dynamic> selecteddata1 = Enumerable.Empty<dynamic>();
+    IEnumerable<dynamic> selecteddata2 = Enumerable.Empty<dynamic>();
+    IEnumerable<dynamic> selecteddata3 = Enumerable.Empty<dynamic>();
+    var datenow = DateTime.Now.ToString("MM/dd/yyyy");
+    var dateyear = DateTime.Now.AddMonths(2).ToString("MM/dd/yyyy");
+
+    var selectQueryStringP2 = "SELECT * FROM P2Request WHERE DateNeeded between @0 and @1";
+    selecteddata1 = db.Query(selectQueryStringP2, datenow, dateyear);
+    var grid1 = new WebGrid(source: selecteddata1, rowsPerPage: 99);
+
+    var selectQueryStringBeta = "SELECT * FROM BetaRequest WHERE DateNeeded between @0 and @1";
+    selecteddata2 = db.Query(selectQueryStringBeta, datenow, dateyear);
+    var grid2 = new WebGrid(source: selecteddata1, rowsPerPage: 99);
+
+    var selectQueryStringNonUser = "SELECT UserProfile.EmployeeNumber, UserProfile.FirstName, UserProfile.LastName, UserProfile.Email FROM UserProfile WHERE UserProfile.UserId NOT IN (SELECT UserId FROM [webpages_UsersInRoles])";
+    selecteddata3 = db.Query(selectQueryStringNonUser);
+
+}
+
+<div class="col-lg-12 text-left">
+    <ul class="breadcrumb text-center">
+        <li class="active">Dashboard</li>
+    </ul>
+</div>
+
+    @if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Library Users")){
+
+
+<div class="col-lg-4">
+    <div class="panel panel-success">
+        <div class="panel-heading">
+            Search/Request Item
+        </div>
+        <div class="panel-body">
+            <a href="~/MemberArea/RequestP2.cshtml" class="btn btn-success text-left">
+                <span class="glyphicon glyphicon-hand-up"></span> P2 Drive
+            </a>
+            <br /><br />
+            <a href="~/MemberArea/RequestBeta.cshtml" class="btn btn-success text-right">
+                <span class="glyphicon glyphicon-hand-up"></span> Beta Tapes
+            </a>
+            <br /><br />
+            <a href="~/MemberArea/SearchBeta.cshtml" class="btn btn-success text-right">
+                <span class="glyphicon glyphicon-search"></span> Beta Tapes Archives
+            </a>
+            <br /><br />
+            <a href="~/MemberArea/Request.cshtml" class="btn btn-success text-right">
+                <span class="glyphicon glyphicon-calendar"></span> All Requests
+            </a>
+        </div>
+    </div>
+</div>
+}
+@if(Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager")) || (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian"))) {
+<div class="col-lg-4">
+    <div class="panel panel-success">
+        <div class="panel-heading">
+            Issue / Return Item
+        </div>
+        <div class="panel-body">
+            <a href="~/MemberArea/ProcessP2.cshtml" class="btn btn-success text-left">
+                <span class="glyphicon glyphicon-repeat"></span> P2 Drive
+            </a>
+            <br /><br />
+
+            <a href="~/MemberArea/ProcessBeta.cshtml" class="btn btn-success text-right">
+                <span class="glyphicon glyphicon-repeat"></span> Beta Tapes
+            </a>
+
+            @if (selecteddata1.Count() > 0 || selecteddata2.Count() > 0)
+            {
+                <br /><br />
+                <div class="alert alert-dismissible alert-info">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <strong><a href="~/MemberArea/RequestAll.cshtml" class="alert-link"><span class="glyphicon glyphicon-info-sign"></span> Pending P2/Beta Request Here!</a></strong>
+                </div>
+            }
+
+
+        </div>
+    </div>
+</div>
+<div class="col-lg-4">
+    <div class="panel panel-success">
+        <div class="panel-heading">
+            Manage / Reports
+        </div>
+        <div class="panel-body">
+
+            <a href="~/MemberArea/ManageP2.cshtml" class="btn btn-info text-left">
+                <span class="glyphicon glyphicon-plus"></span> P2 Drive
+            </a><br /><br />
+
+            <a href="~/MemberArea/ManageBeta.cshtml" class="btn btn-info text-left">
+                <span class="glyphicon glyphicon-plus"></span> Beta Tapes
+            </a><br /><br />
+
+            <a href="~/MemberArea/ManageUsers.cshtml" class="btn btn-info text-left">
+                <span class="glyphicon glyphicon-plus"></span> Library Users
+            </a><br /><br />
+
+
+            @if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin"))
+            {
+                <a href="~/Admin/ManageRoles.cshtml" class="btn btn-info text-left">
+                    <span class="glyphicon glyphicon-user"></span> Roles
+                </a>
+                <br /><br />
+                if (selecteddata3.Count() > 0)
+                {
+                    <div class="alert alert-dismissible alert-info">
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <strong><a href="~/Admin/ManageRoles.cshtml" class="alert-link"><span class="glyphicon glyphicon-info-sign"></span> Pending Users with no Roles!</a></strong>
+                    </div>
+                }
+            }
+            @if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager"))
+            {
+                <a href="~/Manager/ManageRoles.cshtml" class="btn btn-info text-left">
+                    <span class="glyphicon glyphicon-user"></span> Roles
+                </a>
+                <br /><br />
+                if (selecteddata3.Count() > 0)
+                {
+                    <div class="alert alert-dismissible alert-info">
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <strong><a href="~/Manager/ManageRoles.cshtml" class="alert-link"><span class="glyphicon glyphicon-info-sign"></span> Pending Users with no Roles!</a></strong>
+                    </div>
+                }
+            }
+            @if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian"))
+            {
+                <a href="~/Librarian/ManageRoles.cshtml" class="btn btn-info text-left">
+                    <span class="glyphicon glyphicon-user"></span> Roles
+                </a>
+                <br /><br />
+                if (selecteddata3.Count() > 0)
+                {
+                    <div class="alert alert-dismissible alert-info">
+                        <button type="button" class="close" data-dismiss="alert">&times;</button>
+                        <strong><a href="~/Librarian/ManageRoles.cshtml" class="alert-link"><span class="glyphicon glyphicon-info-sign"></span> Pending Users with no Roles!</a></strong>
+                    </div>
+                }
+            }
+
+            <a href="~/Report/P2Reports.aspx" class="btn btn-warning text-left">
+                <span class="glyphicon glyphicon-th-list"></span> P2 Drive Reports
+            </a><br /><br />
+            <a href="~/Report/BetaReports.aspx" class="btn btn-warning text-left">
+                <span class="glyphicon glyphicon-th-list"></span> Beta Tape Reports
+            </a><br /><br />
+
+
+
+        </div>
+    </div>
+    
+</div>
+}
+<hr />
+
+<div class="col-lg-4">
+    <div class="panel panel-info">
+        <div class="panel-heading">
+            Settings
+        </div>
+        <div class="panel-body">
+            <a href="~/Account/AmendUser.cshtml" class="btn btn-default text-left">
+                <span class="glyphicon glyphicon-pencil"></span> Amend User Profile
+            </a>
+            <br /><br />
+            <a href="~/Account/Manage.cshtml" class="btn btn-default text-left">
+                <span class="glyphicon glyphicon-pencil"></span> Change Password
+            </a>
+        </div>
+    </div>
+</div>

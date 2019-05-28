@@ -1,0 +1,105 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+
+    var date = DateTime.UtcNow.AddHours(8).ToLongDateString();
+
+    // Getting the name of the user
+    var db = Database.Open("StarterSite");
+    var ubCommand = "SELECT * FROM UserProfile WHERE UserId = @0";
+    var trow = db.QuerySingle(ubCommand, WebSecurity.CurrentUserId);
+    string user = trow.FirstName + " " + trow.LastName;
+    user = System.Threading.Thread.CurrentThread.CurrentCulture.TextInfo.ToTitleCase(user);
+}
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <title>TV5 News eLibrary</title>
+        <link href="~/Content/bootstrap.css" rel="stylesheet" />
+        <link href="~/Content/MySite.css" rel="stylesheet" />
+        <link href="~/favicon.ico" rel="shortcut icon" type="image/x-icon" />
+        <script src="~/Scripts/jquery-1.8.2.min.js"></script>
+        <script src="~/Scripts/jquery-ui-1.8.24.js"></script>
+        <script src="~/Scripts/modernizr-2.6.2.js"></script>
+        <script src="~/Content/bootstrap.js"></script>
+        <meta name="viewport" content="width=device-width" />
+        <script src="~/Scripts/jquery.maskedinput.js"></script>
+
+    </head>
+    <body>
+    
+        <div class="navbar navbar-inverse navbar-fixed-top">
+            <div class="container">
+                <div class="navbar-header">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand" href="~/MemberArea/Dashboard.cshtml"> TV5 News eLibrary</a>
+                </div>
+                <div class="navbar-collapse collapse">
+
+                    <ul class="nav navbar-nav navbar-right">
+                        @if (WebSecurity.IsAuthenticated)
+                        {
+                            
+                        <li class="">
+                            <form id="logoutForm" action="~/Account/Logout" method="post">
+                                @AntiForgery.GetHtml()
+                                <a class="navbar-text" href="javascript:document.getElementById('logoutForm').submit()">Log out</a>
+                            </form>
+                        </li>
+                        }
+                        else
+                        {
+                            
+                                <li><a href="~/Account/Register">Register</a></li>
+                                <li><a href="~/Account/Login.cshtml">Login</a></li>
+                            
+                        }
+                    </ul>
+
+                </div>
+            </div>
+        </div>
+
+        <div id="body" class="container body-content">
+            @RenderSection("featured", required: false)
+            <section class="content-wrapper main-content clear-fix">
+                <div class="row">
+                    <div class="col-lg-12">
+                        <div class="col-lg-12">
+                            <br /><br /><br /><br />
+                            <div class="col-lg-6 text-left text-primary">
+                               <text>@date</text>
+                            </div>
+                            <div class="col-lg-6 text-right text-primary">
+                                Hi, @user.ToLower()
+                            </div>
+                            <br /><br />
+                        </div>
+                        @RenderBody()
+                    </div>
+                </div>
+            </section>
+        </div>
+        <br /><br />
+        <div class="navbar navbar-default navbar-fixed-bottom">
+        <div class="container">
+            <div class="navbar-text">
+                <footer class=" text-center">
+                    <p>&copy; @DateTime.Now.Year -TV5 News eLibrary</p>
+                </footer>
+            </div>
+
+        </div>
+        
+        </div>
+
+
+        @RenderSection("Scripts", required: false)
+
+    </body>
+</html>

@@ -1,0 +1,166 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+
+    if (Roles.IsUserInRole(WebSecurity.CurrentUserName, "Super Admin") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Manager") || Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian") )
+    {} else {
+        Response.Redirect("~/Error/Forbidden.cshtml");
+    }
+
+
+    Layout = "~/_MemberLayout.cshtml";
+
+    // Initialize general page variables
+    var betanumber = "";
+    var serialnumber = "";
+    var subject = "";
+    var details = "";
+    var location = "";
+    var status = "Available";
+    bool isSuccess = false;
+
+    //setup validation
+    Validation.RequireField("betanumber", "You must specify a beta number.");
+    Validation.RequireField("serialnumber", "You must specify a serial number.");
+    Validation.RequireField("subject", "You must specify a topic/subject/event.");
+    Validation.RequireField("details", "You must specify details.");
+    Validation.RequireField("location", "You must specify a location.");
+
+    //if this is a POST request, validate and process data
+    if (IsPost && Request.Form["add"] != null )
+    {
+        AntiForgery.Validate();
+        betanumber = Request.Form["Betanumber"];
+        serialnumber = Request.Form["SerialNumber"];
+        subject = Request.Form["Subject"];
+        details = Request.Form["Details"];
+        location = Request.Form["Location"];
+
+        // If all information is valid, create a new account
+        if (Validation.IsValid())
+        {
+            // Insert a new beta into the database
+            var db = Database.Open("StarterSite");
+
+            // check if beta number and serial number already exists
+            var dupserial = db.QuerySingle("SELECT SerialNumber FROM Beta WHERE LOWER(SerialNumber) = LOWER(@0)", serialnumber);
+            var dupbeta = db.QuerySingle("SELECT BetaNumber FROM Beta WHERE LOWER(BetaNumber) = LOWER(@0)", betanumber);
+            if (dupserial == null){
+                if(dupbeta == null)
+                {
+                    // insert beta into the Beta Table
+                    db.Execute("INSERT INTO Beta (BetaNumber,SerialNumber,Subject,Location,Status,Details) VALUES (@0,@1,@2,@3,@4,@5)", betanumber, serialnumber, subject, location, status, details);
+                    isSuccess = true;
+                } else
+                {
+                    // Beta tape with beta number already exists
+                    ModelState.AddFormError("Beta Number already exists");
+                }
+
+            } else {
+                // Beta tape with serial number already exists
+                ModelState.AddFormError("Serial Number already exists");
+            }
+        }
+    }
+}
+
+<form method="post">
+    <div class="col-lg-12 text-left">
+        <ul class="breadcrumb">
+            <li><a href="~/MemberArea/Dashboard.cshtml">Dashboard</a></li>
+            <li class="active">Add Beta Tape</li>
+        </ul>
+    </div>
+
+    <div class="form-horizontal col-lg-8">
+
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="BetaNumber" @if (!ModelState.IsValidField("BetaNumber")) { <text> class="error-label" </text>     }>Beta Number</label>
+            </div>
+            <div class="col-md-3">
+                <input class="form-control" type="text" id="BetaNumber" name="BetaNumber" @Validation.For("BetaNumber") />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("BetaNumber")
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="SerialNumber" @if (!ModelState.IsValidField("SerialNumber")) { <text> class="error-label" </text>      }>Serial Number</label>
+            </div>
+            <div class="col-md-6">
+                <input class="form-control" type="text" id="SerialNumber" name="SerialNumber" @Validation.For("SerialNumber") />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("SerialNumber")
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Subject" @if (!ModelState.IsValidField("Subject")) { <text> class="error-label" </text>      }>Subject</label>
+            </div>
+            <div class="col-md-6">
+                <input class="form-control" type="text" id="Subject" name="Subject" @Validation.For("Subject") />
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Subject")
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Location" @if (!ModelState.IsValidField("Location")) { <text> class="error-label" </text>       }>Location</label>
+            </div>
+            <div class="col-md-3">
+                <select class="form-control" id="Location" name="Location" @Validation.For("Location")>
+                    <option value="TV5 Reliance">TV5 Reliance</option>
+                    <option value="TV5 Novaliches">TV5 Novaliches</option>
+                </select>
+
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Location")
+                </div>
+            </div>
+        </div>
+        <div class="form-group">
+            <div class="col-md-4 control-label">
+                <label for="Details" @if (!ModelState.IsValidField("Details")) { <text> class="error-label" </text> }>Details</label>
+            </div>
+            <div class="col-md-6">
+                <textarea class="form-control" id="Details" name="Details" rows="4" cols="20" @Validation.For("Details")></textarea>
+                <div class="text-danger">
+                    @* Write any user name validation errors to the page *@
+                    @Html.ValidationMessage("Details")
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <div class="col-lg-10 col-lg-offset-5">
+                <a href="~/MemberArea/ManageBeta.cshtml" class="btn btn-default">Cancel</a>
+                <input id="submit" type="submit" class="btn btn-primary" value="Submit" name="add" />
+            </div>
+        </div>
+        <br />
+        <div class="form-group">
+            <div class="col-md-3"></div>
+            <div class="col-md-9 text-danger">
+                @AntiForgery.GetHtml()
+                @* If at least one validation error exists, notify the user *@
+                @Html.ValidationSummary("Add Beta was unsuccessful. Please correct the errors and try again.", excludeFieldErrors: true, htmlAttributes: null)
+                @if (isSuccess)
+                {
+                    <p class="text-success">
+                        Beta Tape has been succesfully added. <br /><br />
+                        Number: @betanumber<br />
+                        Serial Number: @serialnumber 
+                    </p>
+                }
+            </div>
+        </div>
+    </div>
+</form>

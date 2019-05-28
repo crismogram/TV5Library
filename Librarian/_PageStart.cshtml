@@ -1,0 +1,8 @@
+﻿@{
+    WebSecurity.RequireAuthenticatedUser();
+    if (!Roles.IsUserInRole(WebSecurity.CurrentUserName, "Librarian"))
+    {
+        Response.SetStatus(HttpStatusCode.Forbidden);
+    }
+}
+
